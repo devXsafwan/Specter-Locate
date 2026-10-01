@@ -126,7 +126,7 @@ app.post("/api/v1/locations/batch",requireRole("user"),async(req,res)=>{
 });
 
 app.get("/api/v1/devices/me",requireRole("user"),async(req,res)=>{
- const c=(req as any).claims as Claims; const r=await pool.query("SELECT * FROM devices WHERE user_id=$1 ORDER BY created_at DESC",[c.sub]);res.json({devices:r.rows});
+ const c=(req as any).claims as Claims; const r=await pool.query(`SELECT d.*, EXISTS(SELECT 1 FROM pairings p WHERE p.device_id=d.id AND p.claimed_at IS NOT NULL AND p.revoked_at IS NULL) AS paired, (SELECT p.admin_id FROM pairings p WHERE p.device_id=d.id AND p.claimed_at IS NOT NULL AND p.revoked_at IS NULL ORDER BY p.claimed_at DESC LIMIT 1) AS admin_id FROM devices d WHERE d.user_id=$1 ORDER BY d.created_at DESC`,[c.sub]);res.json({devices:r.rows});
 });
 
 app.post("/api/v1/pairings/code",requireRole("admin"),async(req,res)=>{
