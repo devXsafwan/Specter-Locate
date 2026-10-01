@@ -75,8 +75,11 @@ class MainActivity:ComponentActivity(){
         val x=api.verifyOtp(phone.trim(),code,"user")
         if(x.ok){
          prefs.edit{putString("token",x.body.optString("token"))}
-         registerDevice()
-         runOnUiThread{busy=false;message="";route="pair"}
+         val registered=registerDeviceIfNeeded()
+         runOnUiThread{
+          busy=false
+          if(registered){message="";route="pair"}else message="Device registration failed. Check the backend connection."
+         }
         }else runOnUiThread{busy=false;message=x.error?:"Invalid code"}
        }
       }
@@ -132,13 +135,15 @@ class MainActivity:ComponentActivity(){
   stopService(Intent(this,LocationForegroundService::class.java))
   prefs.edit{clear()}
  }
- private fun registerDevice(){
-  lifecycleScope.launch(Dispatchers.IO){
-   if(prefs.getString("deviceId",null)!=null)return@launch
-   val name="${Build.MANUFACTURER} ${Build.MODEL}".trim()
-   val r=api.registerDevice(name,Build.MANUFACTURER,Build.MODEL,Build.VERSION.RELEASE,"2.0.0")
-   if(r.ok){prefs.edit{putString("deviceId",r.body.optJSONObject("device")?.optString("id"))}}
-  }
+ private suspend fun registerDeviceIfNeeded():Boolean{
+  if(!prefs.getString("deviceId",null).isNullOrBlank())return true
+  val name=(Build.MANUFACTURER+" "+Build.MODEL).trim()
+  val r=api.registerDevice(name,Build.MANUFACTURER,Build.MODEL,Build.VERSION.RELEASE,"2.0.0")
+  if(!r.ok)return false
+  val id=r.body.optJSONObject("device")?.optString("id")
+  if(id.isNullOrBlank())return false
+  prefs.edit{putString("deviceId",id)}
+  return true
  }
  private fun hasLocation()=ContextCompat.checkSelfPermission(this,Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED||ContextCompat.checkSelfPermission(this,Manifest.permission.ACCESS_COARSE_LOCATION)==PackageManager.PERMISSION_GRANTED
  private fun startTracking()=ContextCompat.startForegroundService(this,Intent(this,LocationForegroundService::class.java))
