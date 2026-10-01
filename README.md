@@ -9,13 +9,13 @@ SPECTER LOCATE is a consent-first two-application Android device location system
 
 ## Backend
 
-Node.js + TypeScript + Express + PostgreSQL + JWT + Twilio Verify.
+Node.js + TypeScript + Express + PostgreSQL + JWT + SMTP email OTP.
 
 The backend is intentionally required for production pairing and realtime telemetry. HTTPS is required in production.
 
 Environment variables are documented in `server/.env.example`.
 
-Twilio Verify is used for SMS OTP. Create a Verify Service and configure the Twilio credentials before using phone verification. Twilio's Verify API uses HTTPS and supports starting and checking SMS verification codes. See the official documentation: https://www.twilio.com/docs/verify/api
+Authentication uses email OTP sent through standard SMTP. Gmail SMTP can be used at no cost with a Gmail App Password. No Twilio account or paid SMS service is required.
 
 ## Database
 
