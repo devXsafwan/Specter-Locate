@@ -6,6 +6,10 @@ plugins {
 }
 android {
     namespace="com.specter.locate"
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
     compileSdk=35
     defaultConfig {
         applicationId="com.specter.locate"
