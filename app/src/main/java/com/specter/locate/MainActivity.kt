@@ -127,6 +127,7 @@ class MainActivity:ComponentActivity(){
     }
    }
   }
+ }
  private fun registerDevice(){
   lifecycleScope.launch(Dispatchers.IO){
    if(prefs.getString("deviceId",null)!=null)return@launch
