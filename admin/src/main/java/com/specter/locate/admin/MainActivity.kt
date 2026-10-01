@@ -54,7 +54,7 @@ class MainActivity:ComponentActivity(){
       {phone->busy=true;lifecycleScope.launch(Dispatchers.IO){val x=api.requestOtp(phone);runOnUiThread{busy=false;message=if(x.ok){route="otp";"OTP sent."}else x.error?:"Could not send OTP"}}})
     "otp"->OtpScreen(loginPhone,message,busy){code->busy=true;lifecycleScope.launch(Dispatchers.IO){val x=api.verifyOtp(loginPhone,code);runOnUiThread{busy=false;if(x.ok){prefs.edit{putString("token",x.body.optString("token"))};route="dashboard";message=""}else message=x.error?:"Invalid OTP"}}}
      "detail"->DeviceDetailScreen(prefs.getString("selectedDevice","")!!,api,{route="dashboard"},{id->lifecycleScope.launch(Dispatchers.IO){val x=api.revoke(id);runOnUiThread{message=if(x.ok)"Pairing revoked." else x.error?:"Failed";route="dashboard"}}},{lat,lon->startActivity(Intent(Intent.ACTION_VIEW,Uri.parse("geo:"+lat+","+lon+"?q="+lat+","+lon)))})
-    else->DashboardScreen(api,{id->prefs.edit{putString("selectedDevice",id)};route="detail"},{busy=true;lifecycleScope.launch(Dispatchers.IO){val x=api.createPairing();runOnUiThread{busy=false;message=if(x.ok)"PAIRING CODE: "+x.body.optString("code") else x.error?:"Could not create code"}}},{prefs.edit{clear()};route="login"})
+    else->DashboardScreen(api,message,{id->prefs.edit{putString("selectedDevice",id)};route="detail"},{busy=true;lifecycleScope.launch(Dispatchers.IO){val x=api.createPairing();runOnUiThread{busy=false;message=if(x.ok)"PAIRING CODE: "+x.body.optString("code") else x.error?:"Could not create code"}}},{prefs.edit{clear()};route="login"})
    }}
   }
  }
