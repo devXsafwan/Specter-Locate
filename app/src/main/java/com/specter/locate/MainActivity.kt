@@ -46,7 +46,7 @@ class MainActivity:ComponentActivity(){
   installSplashScreen();super.onCreate(state)
   setContent{
    var route by remember{mutableStateOf(if(prefs.getString("token",null)==null)"auth" else "loading")}
-   var phone by remember{mutableStateOf("")}
+   var email by remember{mutableStateOf("")}
    var message by remember{mutableStateOf("")}
    var busy by remember{mutableStateOf(false)}
    LaunchedEffect(route){
@@ -58,10 +58,10 @@ class MainActivity:ComponentActivity(){
    SpecterTheme{
     AnimatedContent(targetState=route,label="route"){current->
      when(current){
-      "auth"->AuthScreen(phone,{phone=it},busy,message,{
+      "auth"->AuthScreen(email,{email=it},busy,message,{
        busy=true
        lifecycleScope.launch(Dispatchers.IO){
-        val x=api.requestOtp(phone.trim(),"user")
+        val x=api.requestOtp(email.trim(),"user")
         runOnUiThread{
          busy=false
          message=if(x.ok)"Verification code sent." else x.error?:"Could not send code"
@@ -69,10 +69,10 @@ class MainActivity:ComponentActivity(){
         }
        }
       })
-      "otp"->OtpScreen(phone,busy,message){code->
+      "otp"->OtpScreen(email,busy,message){code->
        busy=true
        lifecycleScope.launch(Dispatchers.IO){
-        val x=api.verifyOtp(phone.trim(),code,"user")
+        val x=api.verifyOtp(email.trim(),code,"user")
         if(x.ok){
          prefs.edit{putString("token",x.body.optString("token"))}
          val registered=registerDeviceIfNeeded()
@@ -149,10 +149,10 @@ class MainActivity:ComponentActivity(){
  private fun startTracking()=ContextCompat.startForegroundService(this,Intent(this,LocationForegroundService::class.java))
 }
 
-@Composable private fun AuthScreen(phone:String,onPhone:(String)->Unit,busy:Boolean,message:String,onSend:()->Unit){
- Center{Brand();Text("Secure device registration",color=Color.White,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text("Verify the phone number that belongs to this device.",color=Muted);OutlinedTextField(phone,onPhone,label={Text("Phone number")},singleLine=true,modifier=Modifier.fillMaxWidth());Button(onClick=onSend,enabled=!busy&&phone.isNotBlank(),modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp)){Text(if(busy)"SENDING…" else "SEND VERIFICATION CODE")};Message(message)}
+@Composable private fun AuthScreen(email:String,onEmail:(String)->Unit,busy:Boolean,message:String,onSend:()->Unit){
+ Center{Brand();Text("Secure account registration",color=Color.White,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text("A free verification code will be sent to your email.",color=Muted);OutlinedTextField(email,onEmail,label={Text("Email address")},singleLine=true,modifier=Modifier.fillMaxWidth());Button(onClick=onSend,enabled=!busy&&email.contains("@"),modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp)){Text(if(busy)"SENDING…" else "SEND VERIFICATION CODE")};Message(message)}
 }
-@Composable private fun OtpScreen(phone:String,busy:Boolean,message:String,onVerify:(String)->Unit){var code by remember{mutableStateOf("")};Center{Brand();Text("Verify $phone",color=Color.White,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);OutlinedTextField(code,{code=it.filter(Char::isDigit).take(10)},label={Text("Verification code")},singleLine=true,modifier=Modifier.fillMaxWidth());Button(onClick={onVerify(code)},enabled=!busy&&code.length>=4,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp)){Text(if(busy)"VERIFYING…" else "VERIFY & CONTINUE")};Message(message)}}
+@Composable private fun OtpScreen(email:String,busy:Boolean,message:String,onVerify:(String)->Unit){var code by remember{mutableStateOf("")};Center{Brand();Text("Verify $email",color=Color.White,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);OutlinedTextField(code,{code=it.filter(Char::isDigit).take(10)},label={Text("Verification code")},singleLine=true,modifier=Modifier.fillMaxWidth());Button(onClick={onVerify(code)},enabled=!busy&&code.length==6,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp)){Text(if(busy)"VERIFYING…" else "VERIFY & CONTINUE")};Message(message)}}
 @Composable private fun PairScreen(message:String,busy:Boolean,onRefresh:()->Unit,onClaim:(String)->Unit,onLogout:()->Unit){var code by remember{mutableStateOf("")};Center{Brand();Text("PAIR THIS DEVICE",color=Cyan,fontWeight=FontWeight.Bold);Text("Enter the 8-digit pairing code generated in SPECTER LOCATE ADMIN.",color=Muted);OutlinedTextField(code,{code=it.filter(Char::isDigit).take(8)},label={Text("Pairing code")},singleLine=true,modifier=Modifier.fillMaxWidth());Button(onClick={onClaim(code)},enabled=!busy&&code.length==8,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp)){Text("PAIR DEVICE")};OutlinedButton(onClick=onRefresh,enabled=!busy,modifier=Modifier.fillMaxWidth()){Text("CHECK PAIRING STATUS")};TextButton(onClick=onLogout){Text("Sign out",color=Muted)};Message(message)}}
 @Composable private fun HomeScreen(message:String,onStart:()->Unit,onStop:()->Unit,onCheck:()->Unit,onPair:()->Unit,onLogout:()->Unit){Center{Brand();Card(colors=CardDefaults.cardColors(containerColor=Surface),shape=RoundedCornerShape(24.dp)){Column(Modifier.padding(22.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){Text("DEVICE CONNECTED",color=Cyan,fontWeight=FontWeight.Bold);Text("This device is registered and ready for authorized location sharing.",color=Muted);Button(onClick=onStart,modifier=Modifier.fillMaxWidth()){Text("START LOCATION SHARING")};OutlinedButton(onClick=onStop,modifier=Modifier.fillMaxWidth()){Text("STOP LOCATION SHARING")};OutlinedButton(onClick=onCheck,modifier=Modifier.fillMaxWidth()){Text("CHECK CONNECTION")};TextButton(onClick=onPair){Text("Pair with another admin",color=Muted)};TextButton(onClick=onLogout){Text("Sign out",color=Muted)}}};Message(message)}}
 @Composable private fun LoadingScreen(){Center{Brand();CircularProgressIndicator(color=Cyan);Text("Checking device session…",color=Muted)}}
