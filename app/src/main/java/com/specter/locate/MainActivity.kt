@@ -109,7 +109,7 @@ class MainActivity:ComponentActivity(){
         permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION,Manifest.permission.POST_NOTIFICATIONS))
        }
       },{
-       stopService(Intent(this,LocationForegroundService::class.java))
+       stopService(Intent(this@MainActivity,LocationForegroundService::class.java))
        message="Tracking stopped."
       },{
        lifecycleScope.launch(Dispatchers.IO){
@@ -127,6 +127,10 @@ class MainActivity:ComponentActivity(){
     }
    }
   }
+ }
+ private fun logout(){
+  stopService(Intent(this,LocationForegroundService::class.java))
+  prefs.edit{clear()}
  }
  private fun registerDevice(){
   lifecycleScope.launch(Dispatchers.IO){
