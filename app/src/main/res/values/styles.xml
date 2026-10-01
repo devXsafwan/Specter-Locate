@@ -1,8 +1,1 @@
-<resources>
-<style name="Theme.SpecterLocate" parent="android:style/Theme.Material.NoActionBar">
-<item name="android:fontFamily">sans</item>
-<item name="android:windowLightStatusBar">false</item>
-<item name="android:statusBarColor">#090B0F</item>
-<item name="android:navigationBarColor">#090B0F</item>
-</style>
-</resources>
+<resources><style name="Theme.SpecterLocate" parent="android:style/Theme.Material.NoActionBar"><item name="android:fontFamily">sans</item><item name="android:windowLightStatusBar">false</item><item name="android:statusBarColor">@color/specter_bg</item><item name="android:navigationBarColor">@color/specter_bg</item></style><style name="Theme.SpecterLocate.Splash" parent="Theme.SplashScreen"><item name="windowSplashScreenBackground">@color/specter_bg</item><item name="windowSplashScreenAnimatedIcon">@drawable/ic_specter_locate</item><item name="postSplashScreenTheme">@style/Theme.SpecterLocate</item></style></resources>
