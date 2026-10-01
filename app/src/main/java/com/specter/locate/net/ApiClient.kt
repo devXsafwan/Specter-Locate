@@ -24,7 +24,7 @@ class ApiClient(private val tokenProvider:()->String?){
             val stream=if(code in 200..299)c.inputStream else c.errorStream
             val text=stream?.bufferedReader()?.use{it.readText()}?:"{}"
             c.disconnect()
-            val json=try{JSONObject(text)}catch{JSONObject()}
+            val json=try{JSONObject(text)}catch(_:Exception){JSONObject()}
             ApiResult(code in 200..299,json,json.optString("message",json.optString("error",null)))
         }catch(e:Exception){ApiResult(false,error=e.message?:"Network error")}
     }
