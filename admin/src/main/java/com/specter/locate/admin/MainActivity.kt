@@ -53,8 +53,8 @@ class MainActivity:ComponentActivity(){
       {phone,code->busy=true;lifecycleScope.launch(Dispatchers.IO){val x=api.bootstrap(phone,code);runOnUiThread{busy=false;message=if(x.ok)"Admin enabled. You can request OTP now." else x.error?:"Bootstrap failed"}}},
       {phone->busy=true;lifecycleScope.launch(Dispatchers.IO){val x=api.requestOtp(phone);runOnUiThread{busy=false;message=if(x.ok){route="otp";"OTP sent."}else x.error?:"Could not send OTP"}}})
     "otp"->OtpScreen(loginPhone,message,busy){code->busy=true;lifecycleScope.launch(Dispatchers.IO){val x=api.verifyOtp(loginPhone,code);runOnUiThread{busy=false;if(x.ok){prefs.edit{putString("token",x.body.optString("token"))};route="dashboard";message=""}else message=x.error?:"Invalid OTP"}}}
-    "detail"->DeviceDetailScreen(prefs.getString("selectedDevice","")!!,api,{route="dashboard"},{id->lifecycleScope.launch(Dispatchers.IO){val x=api.revoke(id);runOnUiThread{message=if(x.ok)"Pairing revoked." else x.error?:"Failed";route="dashboard"}}})
-    else->DashboardScreen(api,message,{id->prefs.edit{putString("selectedDevice",id)};route="detail"},{busy=true;lifecycleScope.launch(Dispatchers.IO){val x=api.createPairing();runOnUiThread{busy=false;message=if(x.ok)"PAIRING CODE: "+x.body.optString("code") else x.error?:"Could not create code"}}},{prefs.edit{clear()};route="login"})
+    "detail"->DeviceDetailScreen(prefs.getString("selectedDevice","")!!,api,{route="dashboard"},{id->lifecycleScope.launch(Dispatchers.IO){val x=api.revoke(id);runOnUiThread{message=if(x.ok)"Pairing revoked." else x.error?:"Failed";route="dashboard"}}}),{lat,lon->startActivity(Intent(Intent.ACTION_VIEW,Uri.parse("geo:"+lat+","+lon+"?q="+lat+","+lon)))}
+    else->DashboardScreen(api,{id->prefs.edit{putString("selectedDevice",id)};route="detail"},{busy=true;lifecycleScope.launch(Dispatchers.IO){val x=api.createPairing();runOnUiThread{busy=false;message=if(x.ok)"PAIRING CODE: "+x.body.optString("code") else x.error?:"Could not create code"}}},{prefs.edit{clear()};route="login"})
    }}
   }
  }
@@ -70,12 +70,11 @@ class MainActivity:ComponentActivity(){
 }
 @Composable private fun DashboardScreen(api:ApiClient,message:String,onDevice:(String)->Unit,onPair:()->Unit,onLogout:()->Unit){
  var devices by remember{mutableStateOf(emptyList<JSONObject>())}
- var localMessage by remember{mutableStateOf(message)}
- LaunchedEffect(Unit){while(true){val r=withContext(Dispatchers.IO){api.devices()};if(r.ok){val a=r.body.optJSONArray("devices");devices=(0 until (a?.length()?:0)).map{a!!.getJSONObject(it)}}else localMessage=r.error?:"Connection error";delay(5000)}}
+ LaunchedEffect(Unit){while(true){val r=withContext(Dispatchers.IO){api.devices()};if(r.ok){val a=r.body.optJSONArray("devices");devices=(0 until (a?.length()?:0)).map{a!!.getJSONObject(it)}};delay(5000)}}
  LazyColumn(Modifier.fillMaxSize().background(Bg),contentPadding=PaddingValues(20.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
   item{Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("SPECTER",color=Cyan,fontWeight=FontWeight.Bold);Text("LOCATE ADMIN",color=Color.White,style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.ExtraBold)};IconButton(onClick=onLogout){Icon(Icons.Default.Logout,null,tint=Color.White)}}}
   item{Button(onClick=onPair,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp)){Text("GENERATE PAIRING CODE")}}
-  if(localMessage.isNotBlank())item{Text(localMessage,color=Cyan)}
+  if(message.isNotBlank())item{Text(message,color=Cyan)}
   item{Text("DEVICES",color=Color.White,fontWeight=FontWeight.Bold)}
   items(devices,key={it.optString("id")}){d->DeviceCard(d){onDevice(d.optString("id"))}}
  }
@@ -92,7 +91,7 @@ class MainActivity:ComponentActivity(){
   }
  }
 }
-@Composable private fun DeviceDetailScreen(id:String,api:ApiClient,onBack:()->Unit,onRevoke:(String)->Unit){
+@Composable private fun DeviceDetailScreen(id:String,api:ApiClient,onBack:()->Unit,onRevoke:(String)->Unit,onMap:(Double,Double)->Unit){
  var device by remember{mutableStateOf<JSONObject?>(null)}
  var history by remember{mutableStateOf(emptyList<JSONObject>())}
  var message by remember{mutableStateOf("")}
@@ -100,7 +99,7 @@ class MainActivity:ComponentActivity(){
  Column(Modifier.fillMaxSize().background(Bg).padding(20.dp)){
   Row(verticalAlignment=Alignment.CenterVertically){IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,null,tint=Color.White)};Text("DEVICE",color=Color.White,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)}
   if(device!=null)LazyColumn(verticalArrangement=Arrangement.spacedBy(12.dp),contentPadding=PaddingValues(vertical=12.dp)){
-   item{DeviceDetailCard(device!!,id,onRevoke){lat,lon->onBack();}}
+   item{DeviceDetailCard(device!!,id,onRevoke){lat,lon->onMap(lat,lon)}}
    item{Text("LOCATION HISTORY",color=Color.White,fontWeight=FontWeight.Bold)}
    items(history){p->Card(colors=CardDefaults.cardColors(containerColor=Surface2),shape=RoundedCornerShape(14.dp)){Text(p.optDouble("latitude").toString()+", "+p.optDouble("longitude").toString()+"  •  "+p.optString("captured_at"),color=Color.White,modifier=Modifier.padding(14.dp))}}
   }else Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){Text(message.ifBlank{"Loading device…"},color=Muted)}
