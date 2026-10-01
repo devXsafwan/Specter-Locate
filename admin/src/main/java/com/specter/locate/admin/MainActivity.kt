@@ -87,7 +87,7 @@ class MainActivity:ComponentActivity(){
    Row{Text(d.optString("device_name","Android device"),color=Color.White,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f));Text(if(online)"ONLINE" else "OFFLINE",color=if(online)Cyan else Muted,fontWeight=FontWeight.Bold)}
    Text(d.optString("manufacturer")+" "+d.optString("model"),color=Muted)
    val b=d.optInt("battery_percent",-1)
-   Text("Battery "+if(b>=0)b.toString()+"%" else "—"+"  •  Android "+d.optString("android_version","—"),color=Muted)
+   Text("Battery "+(if(b>=0)b.toString()+"%" else "—")+"  •  Android "+d.optString("android_version","—"),color=Muted)
    Text("Last seen: "+d.optString("last_seen_at","—"),color=Muted,style=MaterialTheme.typography.bodySmall)
   }
  }
@@ -100,7 +100,7 @@ class MainActivity:ComponentActivity(){
  Column(Modifier.fillMaxSize().background(Bg).padding(20.dp)){
   Row(verticalAlignment=Alignment.CenterVertically){IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,null,tint=Color.White)};Text("DEVICE",color=Color.White,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)}
   if(device!=null)LazyColumn(verticalArrangement=Arrangement.spacedBy(12.dp),contentPadding=PaddingValues(vertical=12.dp)){
-   item{DeviceDetailCard(device!!,id,onRevoke){lat,lon->startActivity(Intent(Intent.ACTION_VIEW,Uri.parse("geo:"+lat+","+lon+"?q="+lat+","+lon)))}}
+   item{DeviceDetailCard(device!!,id,onRevoke){lat,lon->onBack();}}
    item{Text("LOCATION HISTORY",color=Color.White,fontWeight=FontWeight.Bold)}
    items(history){p->Card(colors=CardDefaults.cardColors(containerColor=Surface2),shape=RoundedCornerShape(14.dp)){Text(p.optDouble("latitude").toString()+", "+p.optDouble("longitude").toString()+"  •  "+p.optString("captured_at"),color=Color.White,modifier=Modifier.padding(14.dp))}}
   }else Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){Text(message.ifBlank{"Loading device…"},color=Muted)}
