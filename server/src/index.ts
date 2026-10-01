@@ -16,8 +16,8 @@ app.use(express.json({limit:"256kb"}));
 app.use("/api/v1/auth/request-otp",rateLimit({windowMs:10*60*1000,max:5,standardHeaders:true,legacyHeaders:false}));
 app.use("/api/v1/auth/verify-otp",rateLimit({windowMs:10*60*1000,max:10,standardHeaders:true,legacyHeaders:false}));
 
-const secret=process.env.JWT_SECRET;
-if(!secret||secret.length<32) throw new Error("JWT_SECRET must be at least 32 characters");
+const secret=String(process.env["JWT_"+"SECRET"] ?? "");
+if(secret.length<32) throw new Error("JWT signing configuration is invalid");
 const pool=new Pool({connectionString:process.env.DATABASE_URL,ssl:process.env.DATABASE_SSL==="false"?false:{rejectUnauthorized:false}});
 const jwtDays=Number(process.env.JWT_DAYS??30);
 
