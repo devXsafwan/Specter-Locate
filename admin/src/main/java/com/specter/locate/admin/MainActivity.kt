@@ -45,14 +45,14 @@ class MainActivity:ComponentActivity(){
   installSplashScreen();super.onCreate(state)
   setContent{
    var route by remember{mutableStateOf(if(prefs.getString("token",null)==null)"login" else "dashboard")}
-   var loginPhone by remember{mutableStateOf("")}
+   var loginEmail by remember{mutableStateOf("")}
    var message by remember{mutableStateOf("")}
    var busy by remember{mutableStateOf(false)}
    AnimatedContent(route,label="route"){r->when(r){
-    "login"->LoginScreen(loginPhone,{loginPhone=it},message,busy,
-      {phone,code->busy=true;lifecycleScope.launch(Dispatchers.IO){val x=api.bootstrap(phone,code);runOnUiThread{busy=false;message=if(x.ok)"Admin enabled. You can request OTP now." else x.error?:"Bootstrap failed"}}},
-      {phone->busy=true;lifecycleScope.launch(Dispatchers.IO){val x=api.requestOtp(phone);runOnUiThread{busy=false;message=if(x.ok){route="otp";"OTP sent."}else x.error?:"Could not send OTP"}}})
-    "otp"->OtpScreen(loginPhone,message,busy){code->busy=true;lifecycleScope.launch(Dispatchers.IO){val x=api.verifyOtp(loginPhone,code);runOnUiThread{busy=false;if(x.ok){prefs.edit{putString("token",x.body.optString("token"))};route="dashboard";message=""}else message=x.error?:"Invalid OTP"}}}
+    "login"->LoginScreen(loginEmail,{loginEmail=it},message,busy,
+      {phone,code->busy=true;lifecycleScope.launch(Dispatchers.IO){val x=api.bootstrap(email,code);runOnUiThread{busy=false;message=if(x.ok)"Admin enabled. You can request OTP now." else x.error?:"Bootstrap failed"}}},
+      {phone->busy=true;lifecycleScope.launch(Dispatchers.IO){val x=api.requestOtp(email);runOnUiThread{busy=false;message=if(x.ok){route="otp";"OTP sent."}else x.error?:"Could not send OTP"}}})
+    "otp"->OtpScreen(loginEmail,message,busy){code->busy=true;lifecycleScope.launch(Dispatchers.IO){val x=api.verifyOtp(email,code);runOnUiThread{busy=false;if(x.ok){prefs.edit{putString("token",x.body.optString("token"))};route="dashboard";message=""}else message=x.error?:"Invalid OTP"}}}
      "detail"->DeviceDetailScreen(prefs.getString("selectedDevice","")!!,api,{route="dashboard"},{id->lifecycleScope.launch(Dispatchers.IO){val x=api.revoke(id);runOnUiThread{message=if(x.ok)"Pairing revoked." else x.error?:"Failed";route="dashboard"}}},{lat,lon->startActivity(Intent(Intent.ACTION_VIEW,Uri.parse("geo:"+lat+","+lon+"?q="+lat+","+lon)))})
     else->DashboardScreen(api,message,{id->prefs.edit{putString("selectedDevice",id)};route="detail"},{busy=true;lifecycleScope.launch(Dispatchers.IO){val x=api.createPairing();runOnUiThread{busy=false;message=if(x.ok)"PAIRING CODE: "+x.body.optString("code") else x.error?:"Could not create code"}}},{prefs.edit{clear()};route="login"})
    }}
@@ -60,13 +60,13 @@ class MainActivity:ComponentActivity(){
  }
 }
 
-@Composable private fun LoginScreen(phone:String,onPhone:(String)->Unit,message:String,busy:Boolean,onBootstrap:(String,String)->Unit,onOtp:(String)->Unit){
+@Composable private fun LoginScreen(email:String,onEmail:(String)->Unit,message:String,busy:Boolean,onBootstrap:(String,String)->Unit,onOtp:(String)->Unit){
  var bootstrap by remember{mutableStateOf("")}
- Center{Brand();Text("ADMIN SETUP",color=Color.White,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text("Register the admin phone once with the server bootstrap secret.",color=Muted);OutlinedTextField(phone,onPhone,label={Text("Admin phone")},singleLine=true,modifier=Modifier.fillMaxWidth());OutlinedTextField(bootstrap,{bootstrap=it},label={Text("Bootstrap secret")},singleLine=true,modifier=Modifier.fillMaxWidth());Button(onClick={onBootstrap(phone.trim(),bootstrap.trim())},enabled=!busy&&phone.isNotBlank()&&bootstrap.isNotBlank(),modifier=Modifier.fillMaxWidth()){Text("ENABLE ADMIN")};Spacer(Modifier.height(6.dp));Button(onClick={onOtp(phone.trim())},enabled=!busy&&phone.isNotBlank(),modifier=Modifier.fillMaxWidth()){Text("SEND ADMIN OTP")};Message(message)}
+ Center{Brand();Text("ADMIN SETUP",color=Color.White,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text("Register the admin email once with the server bootstrap secret.",color=Muted);OutlinedTextField(email,onEmail,label={Text("Admin email")},singleLine=true,modifier=Modifier.fillMaxWidth());OutlinedTextField(bootstrap,{bootstrap=it},label={Text("Bootstrap secret")},singleLine=true,modifier=Modifier.fillMaxWidth());Button(onClick={onBootstrap(email.trim(),bootstrap.trim())},enabled=!busy&&email.contains("@")&&bootstrap.isNotBlank(),modifier=Modifier.fillMaxWidth()){Text("ENABLE ADMIN")};Spacer(Modifier.height(6.dp));Button(onClick={onOtp(email.trim())},enabled=!busy&&email.contains("@"),modifier=Modifier.fillMaxWidth()){Text("SEND ADMIN OTP")};Message(message)}
 }
-@Composable private fun OtpScreen(phone:String,message:String,busy:Boolean,onVerify:(String)->Unit){
+@Composable private fun OtpScreen(email:String,message:String,busy:Boolean,onVerify:(String)->Unit){
  var code by remember{mutableStateOf("")}
- Center{Brand();Text("ADMIN VERIFICATION",color=Color.White,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text(phone,color=Muted);OutlinedTextField(code,{code=it.filter(Char::isDigit)},label={Text("OTP")},singleLine=true,modifier=Modifier.fillMaxWidth());Button(onClick={onVerify(code)},enabled=!busy&&code.length>=4,modifier=Modifier.fillMaxWidth()){Text(if(busy)"VERIFYING…" else "SIGN IN")};Message(message)}
+ Center{Brand();Text("ADMIN VERIFICATION",color=Color.White,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text(email,color=Muted);OutlinedTextField(code,{code=it.filter(Char::isDigit)},label={Text("OTP")},singleLine=true,modifier=Modifier.fillMaxWidth());Button(onClick={onVerify(code)},enabled=!busy&&code.length==6,modifier=Modifier.fillMaxWidth()){Text(if(busy)"VERIFYING…" else "SIGN IN")};Message(message)}
 }
 @Composable private fun DashboardScreen(api:ApiClient,message:String,onDevice:(String)->Unit,onPair:()->Unit,onLogout:()->Unit){
  var devices by remember{mutableStateOf(emptyList<JSONObject>())}
