@@ -6,22 +6,22 @@ plugins {
 }
 android {
     namespace="com.specter.locate"
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
     compileSdk=35
+    buildFeatures { buildConfig=true; compose=true }
     defaultConfig {
         applicationId="com.specter.locate"
         minSdk=26
         targetSdk=35
-        versionCode=1
-        versionName="1.0.0"
+        versionCode=2
+        versionName="2.0.0"
+        val apiUrl=(project.findProperty("SPECTER_API_URL") as String?) ?: "https://YOUR_API_HOST"
+        buildConfigField("String","API_BASE_URL","\"$apiUrl\"")
     }
+    compileOptions { sourceCompatibility=JavaVersion.VERSION_17; targetCompatibility=JavaVersion.VERSION_17 }
 }
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
-    implementation("androidx.core:core-splashscreen:1.0.1")
+    implementation("androidx.core:core-splashscreen:1.2.0")
     implementation("androidx.activity:activity-compose:1.10.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.compose.ui:ui:1.7.8")
