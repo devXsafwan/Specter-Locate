@@ -28,6 +28,7 @@ import com.specter.locate.location.LocationForegroundService
 import com.specter.locate.net.ApiClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 private val Bg=Color(0xFF070A0F)
 private val Surface=Color(0xFF0F141C)
@@ -48,7 +49,7 @@ class MainActivity:ComponentActivity(){
    var phone by remember{mutableStateOf("")}
    var message by remember{mutableStateOf("")}
    var busy by remember{mutableStateOf(false)}
-   LaunchedEffect(route){if(route=="loading"){val r=runCatching{api.devicesMe()}.getOrNull();route=if(r?.ok==true)"home" else "auth"}}
+   LaunchedEffect(route){if(route=="loading"){val r=withContextIo{api.devicesMe()};route=if(r.ok)"home" else "auth"}}
    SpecterTheme{AnimatedContent(targetState=route,label="route"){r->when(r){
     "auth"->AuthScreen(phone,{phone=it},busy,message,{busy=true;message="";lifecycleScope.launch(Dispatchers.IO){val x=api.requestOtp(phone.trim(),"user");runOnUiThread{busy=false;message=if(x.ok)"Verification code sent." else x.error?:"Could not send code";if(x.ok)route="otp"}}}})
     "otp"->OtpScreen(phone,busy,message,{code->busy=true;lifecycleScope.launch(Dispatchers.IO){val x=api.verifyOtp(phone.trim(),code,"user");if(x.ok){prefs.edit{putString("token",x.body.optString("token"))};registerDevice();runOnUiThread{busy=false;route="pair"}}else runOnUiThread{busy=false;message=x.error?:"Invalid code"}}})
