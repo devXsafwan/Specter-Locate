@@ -14,7 +14,7 @@ android {
         targetSdk=35
         versionCode=2
         versionName="2.0.0"
-        val apiUrl=(project.findProperty("SPECTER_API_URL") as String?) ?: "https://YOUR_API_HOST"
+        val apiUrl=((project.findProperty("SPECTER_API_URL") as String?)?.takeIf { it.isNotBlank() }) ?: "https://YOUR_API_HOST"
         buildConfigField("String","API_BASE_URL","\"$apiUrl\"")
     }
     compileOptions { sourceCompatibility=JavaVersion.VERSION_17; targetCompatibility=JavaVersion.VERSION_17 }
