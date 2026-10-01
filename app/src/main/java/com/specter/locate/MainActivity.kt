@@ -28,7 +28,6 @@ import com.specter.locate.location.LocationForegroundService
 import com.specter.locate.net.ApiClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 private val Bg=Color(0xFF070A0F)
 private val Surface=Color(0xFF0F141C)
@@ -49,16 +48,84 @@ class MainActivity:ComponentActivity(){
    var phone by remember{mutableStateOf("")}
    var message by remember{mutableStateOf("")}
    var busy by remember{mutableStateOf(false)}
-   LaunchedEffect(route){if(route=="loading"){val r=withContextIo{api.devicesMe()};route=if(r.ok)"home" else "auth"}}
-   SpecterTheme{AnimatedContent(targetState=route,label="route"){r->when(r){
-    "auth"->AuthScreen(phone,{phone=it},busy,message,{busy=true;message="";lifecycleScope.launch(Dispatchers.IO){val x=api.requestOtp(phone.trim(),"user");runOnUiThread{busy=false;message=if(x.ok)"Verification code sent." else x.error?:"Could not send code";if(x.ok)route="otp"}}}})
-    "otp"->OtpScreen(phone,busy,message,{code->busy=true;lifecycleScope.launch(Dispatchers.IO){val x=api.verifyOtp(phone.trim(),code,"user");if(x.ok){prefs.edit{putString("token",x.body.optString("token"))};registerDevice();runOnUiThread{busy=false;route="pair"}}else runOnUiThread{busy=false;message=x.error?:"Invalid code"}}})
-    "pair"->PairScreen(message,{busy=true;lifecycleScope.launch(Dispatchers.IO){val d=api.devicesMe();val paired=d.body.optJSONArray("devices")?.optJSONObject(0)?.optBoolean("paired",false)==true;runOnUiThread{busy=false;route=if(paired)"home" else "pair"}}},{code->busy=true;lifecycleScope.launch(Dispatchers.IO){val x=api.claimPairing(code.trim());runOnUiThread{busy=false;message=if(x.ok)"Device paired successfully." else x.error?:"Pairing failed";if(x.ok)route="home"}}},{route="auth";prefs.edit{clear()}})
-    "home"->HomeScreen(message,{message="";if(hasLocation())startTracking()else{pendingStart=true;permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION,Manifest.permission.POST_NOTIFICATIONS))}},{stopService(Intent(this,LocationForegroundService::class.java));message="Tracking stopped."},{lifecycleScope.launch(Dispatchers.IO){val d=api.devicesMe();runOnUiThread{message=if(d.ok){val p=d.body.optJSONArray("devices")?.optJSONObject(0)?.optBoolean("paired",false)==true;if(!p)"Device is not paired." else "Connection verified."}else d.error?:"Connection error"}}},{route="pair"},{route="auth";prefs.edit{clear()}})
-    else->LoadingScreen()
-   }}}
+   LaunchedEffect(route){
+    if(route=="loading"){
+     val result=withContext(Dispatchers.IO){api.devicesMe()}
+     route=if(result.ok)"home" else "auth"
+    }
+   }
+   SpecterTheme{
+    AnimatedContent(targetState=route,label="route"){current->
+     when(current){
+      "auth"->AuthScreen(phone,{phone=it},busy,message,{
+       busy=true
+       lifecycleScope.launch(Dispatchers.IO){
+        val x=api.requestOtp(phone.trim(),"user")
+        runOnUiThread{
+         busy=false
+         message=if(x.ok)"Verification code sent." else x.error?:"Could not send code"
+         if(x.ok)route="otp"
+        }
+       }
+      })
+      "otp"->OtpScreen(phone,busy,message){code->
+       busy=true
+       lifecycleScope.launch(Dispatchers.IO){
+        val x=api.verifyOtp(phone.trim(),code,"user")
+        if(x.ok){
+         prefs.edit{putString("token",x.body.optString("token"))}
+         registerDevice()
+         runOnUiThread{busy=false;message="";route="pair"}
+        }else runOnUiThread{busy=false;message=x.error?:"Invalid code"}
+       }
+      }
+      "pair"->PairScreen(message,busy,{
+       busy=true
+       lifecycleScope.launch(Dispatchers.IO){
+        val d=api.devicesMe()
+        val paired=d.body.optJSONArray("devices")?.optJSONObject(0)?.optBoolean("paired",false)==true
+        runOnUiThread{
+         busy=false
+         message=if(paired)"Device is paired." else d.error?:"Device is not paired yet."
+         if(paired)route="home"
+        }
+       }
+      },{code->
+       busy=true
+       lifecycleScope.launch(Dispatchers.IO){
+        val x=api.claimPairing(code.trim())
+        runOnUiThread{
+         busy=false
+         message=if(x.ok)"Device paired successfully." else x.error?:"Pairing failed"
+         if(x.ok)route="home"
+        }
+       }
+      },{logout();route="auth"})
+      "home"->HomeScreen(message,{
+       message=""
+       if(hasLocation())startTracking()else{
+        pendingStart=true
+        permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION,Manifest.permission.POST_NOTIFICATIONS))
+       }
+      },{
+       stopService(Intent(this,LocationForegroundService::class.java))
+       message="Tracking stopped."
+      },{
+       lifecycleScope.launch(Dispatchers.IO){
+        val d=api.devicesMe()
+        runOnUiThread{
+         message=if(d.ok){
+          val paired=d.body.optJSONArray("devices")?.optJSONObject(0)?.optBoolean("paired",false)==true
+          if(paired)"Connection verified." else "Device is not paired."
+         }else d.error?:"Connection error"
+        }
+       }
+      },{route="pair"},{logout();route="auth"})
+      else->LoadingScreen()
+     }
+    }
+   }
   }
- }
  private fun registerDevice(){
   lifecycleScope.launch(Dispatchers.IO){
    if(prefs.getString("deviceId",null)!=null)return@launch
