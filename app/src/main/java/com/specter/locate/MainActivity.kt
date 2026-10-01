@@ -57,7 +57,7 @@ class MainActivity:ComponentActivity(){
     "settings"->SettingsScreen(active,{screen="home"},{screen="developer"},{screen="admin"})
     "developer"->DeveloperProfile{screen="settings"}
     "admin"->AdminPanel{screen="settings"}
-    else->Dashboard(active,points,{if(hasLocation()){startLocation();active=true}else{startAfterPermission=true;permissions.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION,Manifest.permission.POST_NOTIFICATIONS))}},{stopService(Intent(this,LocationForegroundService::class.java));active=false},{screen="settings"},{dao.clear()})
+    else->Dashboard(active,points,{if(hasLocation()){startLocation();active=true}else{startAfterPermission=true;permissions.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION,Manifest.permission.POST_NOTIFICATIONS))}},{stopService(Intent(this,LocationForegroundService::class.java));active=false},{screen="settings"},{lifecycleScope.launch { dao.clear() }})
    }}}
   }
  }
