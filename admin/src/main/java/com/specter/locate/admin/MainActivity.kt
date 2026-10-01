@@ -121,4 +121,4 @@ class MainActivity:ComponentActivity(){
 }
 @Composable private fun Brand(){Text("SPECTER",color=Cyan,fontWeight=FontWeight.Bold);Text("LOCATE ADMIN",color=Color.White,style=MaterialTheme.typography.displaySmall,fontWeight=FontWeight.ExtraBold);Text("Authorized device management",color=Muted)}
 @Composable private fun Message(v:String){if(v.isNotBlank())Text(v,color=Muted)}
-@Composable private fun Center(content:@Composable ColumnScope.()->Unit){Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Bg,Color(0xFF0D1118)))).padding(24.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally,content=content)}
+@Composable private fun Center(content:@Composable ColumnScope.() -> Unit){Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Bg,Color(0xFF0D1118)))).padding(24.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally,content=content)}
