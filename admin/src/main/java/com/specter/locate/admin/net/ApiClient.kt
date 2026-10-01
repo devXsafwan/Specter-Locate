@@ -17,7 +17,7 @@ class ApiClient(private val tokenProvider:()->String?){
    val code=c.responseCode;val stream=if(code in 200..299)c.inputStream else c.errorStream
    val text=stream?.bufferedReader()?.use{it.readText()}?:"{}";c.disconnect()
    val json=try{JSONObject(text)}catch(_:Exception){JSONObject()}
-   ApiResult(code in 200..299,json,json.optString("message",json.optString("error",null)))
+   ApiResult(code in 200..299,json,json.optString("message",json.optString("error","")))
   }catch(e:Exception){ApiResult(false,error=e.message?:"Network error")}
  }
  fun requestOtp(phone:String)=request("/api/v1/auth/request-otp","POST",JSONObject().put("phone",phone).put("role","admin"))
