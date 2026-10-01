@@ -148,5 +148,5 @@ class MainActivity:ComponentActivity(){
 @Composable private fun LoadingScreen(){Center{Brand();CircularProgressIndicator(color=Cyan);Text("Checking device session…",color=Muted)}}
 @Composable private fun Brand(){Text("SPECTER",color=Cyan,fontWeight=FontWeight.Bold);Text("LOCATE",color=Color.White,fontWeight=FontWeight.ExtraBold,style=MaterialTheme.typography.displaySmall);Text("Your location. Under your control.",color=Muted)}
 @Composable private fun Message(v:String){if(v.isNotBlank())Text(v,color=Muted)}
-@Composable private fun Center(content:@Composable ColumnScope.()->Unit){Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Bg,Color(0xFF0D1118)))).padding(24.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally,content=content)}
-@Composable private fun SpecterTheme(content:@Composable()->Unit){MaterialTheme(colorScheme=darkColorScheme(primary=Cyan,secondary=Violet,background=Bg,surface=Surface),content=content)}
+@Composable private fun Center(content:@Composable ColumnScope.() -> Unit){Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Bg,Color(0xFF0D1118)))).padding(24.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally,content=content)}
+@Composable private fun SpecterTheme(content:@Composable () -> Unit){MaterialTheme(colorScheme=darkColorScheme(primary=Cyan,secondary=Violet,background=Bg,surface=Surface),content=content)}
