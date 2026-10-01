@@ -100,13 +100,13 @@ class MainActivity:ComponentActivity(){
  Column(Modifier.fillMaxSize().background(Bg).padding(20.dp)){
   Row(verticalAlignment=Alignment.CenterVertically){IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,null,tint=Color.White)};Text("DEVICE",color=Color.White,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)}
   if(device!=null)LazyColumn(verticalArrangement=Arrangement.spacedBy(12.dp),contentPadding=PaddingValues(vertical=12.dp)){
-   item{DeviceDetailCard(device!!,id,onRevoke)}
+   item{DeviceDetailCard(device!!,id,onRevoke){lat,lon->startActivity(Intent(Intent.ACTION_VIEW,Uri.parse("geo:"+lat+","+lon+"?q="+lat+","+lon)))}}
    item{Text("LOCATION HISTORY",color=Color.White,fontWeight=FontWeight.Bold)}
    items(history){p->Card(colors=CardDefaults.cardColors(containerColor=Surface2),shape=RoundedCornerShape(14.dp)){Text(p.optDouble("latitude").toString()+", "+p.optDouble("longitude").toString()+"  •  "+p.optString("captured_at"),color=Color.White,modifier=Modifier.padding(14.dp))}}
   }else Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){Text(message.ifBlank{"Loading device…"},color=Muted)}
  }
 }
-@Composable private fun DeviceDetailCard(d:JSONObject,id:String,onRevoke:(String)->Unit){
+@Composable private fun DeviceDetailCard(d:JSONObject,id:String,onRevoke:(String)->Unit,onMap:(Double,Double)->Unit){
  val lat=d.optDouble("last_latitude",Double.NaN);val lon=d.optDouble("last_longitude",Double.NaN)
  Card(colors=CardDefaults.cardColors(containerColor=Surface),shape=RoundedCornerShape(22.dp)){Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
   Text(d.optString("device_name"),color=Color.White,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)
@@ -115,7 +115,7 @@ class MainActivity:ComponentActivity(){
   Text("Model: "+d.optString("manufacturer")+" "+d.optString("model"),color=Muted)
   Text("Android: "+d.optString("android_version"),color=Muted)
   Text("Last seen: "+d.optString("last_seen_at"),color=Muted)
-  if(!lat.isNaN()&&!lon.isNaN())Button(onClick={val uri=Uri.parse("geo:"+lat+","+lon+"?q="+lat+","+lon);/* handled by parent activity through intent chooser not needed here */},modifier=Modifier.fillMaxWidth()){Text("LOCATION: %.6f, %.6f".format(lat,lon))}
+  if(!lat.isNaN()&&!lon.isNaN())Button(onClick={onMap(lat,lon)},modifier=Modifier.fillMaxWidth()){Text("OPEN LOCATION: %.6f, %.6f".format(lat,lon))}
   OutlinedButton(onClick={onRevoke(id)},modifier=Modifier.fillMaxWidth()){Text("REVOKE PAIRING")}
  }}
 }
