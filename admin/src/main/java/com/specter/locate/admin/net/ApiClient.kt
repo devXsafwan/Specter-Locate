@@ -20,9 +20,9 @@ class ApiClient(private val tokenProvider:()->String?){
    ApiResult(code in 200..299,json,json.optString("message",json.optString("error","")))
   }catch(e:Exception){ApiResult(false,error=e.message?:"Network error")}
  }
- fun requestOtp(phone:String)=request("/api/v1/auth/request-otp","POST",JSONObject().put("phone",phone).put("role","admin"))
- fun verifyOtp(phone:String,code:String)=request("/api/v1/auth/verify-otp","POST",JSONObject().put("phone",phone).put("code",code).put("role","admin"))
- fun bootstrap(phone:String,code:String)=request("/api/v1/auth/bootstrap-admin","POST",JSONObject().put("phone",phone).put("bootstrapCode",code))
+ fun requestOtp(email:String)=request("/api/v1/auth/request-otp","POST",JSONObject().put("email",email).put("role","admin"))
+ fun verifyOtp(email:String,code:String)=request("/api/v1/auth/verify-otp","POST",JSONObject().put("email",email).put("code",code).put("role","admin"))
+ fun bootstrap(email:String,code:String)=request("/api/v1/auth/bootstrap-admin","POST",JSONObject().put("email",email).put("bootstrapCode",code))
  fun devices()=request("/api/v1/admin/devices")
  fun device(id:String)=request("/api/v1/admin/devices/"+id)
  fun createPairing()=request("/api/v1/pairings/code","POST",JSONObject())
