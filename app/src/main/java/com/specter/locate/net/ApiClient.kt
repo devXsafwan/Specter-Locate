@@ -28,8 +28,8 @@ class ApiClient(private val tokenProvider:()->String?){
             ApiResult(code in 200..299,json,json.optString("message",json.optString("error","")))
         }catch(e:Exception){ApiResult(false,error=e.message?:"Network error")}
     }
-    fun requestOtp(phone:String,role:String)=request("/api/v1/auth/request-otp","POST",JSONObject().put("phone",phone).put("role",role))
-    fun verifyOtp(phone:String,code:String,role:String)=request("/api/v1/auth/verify-otp","POST",JSONObject().put("phone",phone).put("code",code).put("role",role))
+    fun requestOtp(email:String,role:String)=request("/api/v1/auth/request-otp","POST",JSONObject().put("email",email).put("role",role))
+    fun verifyOtp(email:String,code:String,role:String)=request("/api/v1/auth/verify-otp","POST",JSONObject().put("email",email).put("code",code).put("role",role))
     fun registerDevice(name:String,manufacturer:String,model:String,android:String,app:String)=request("/api/v1/devices/register","POST",JSONObject().put("deviceName",name).put("manufacturer",manufacturer).put("model",model).put("androidVersion",android).put("appVersion",app))
     fun devicesMe()=request("/api/v1/devices/me")
     fun claimPairing(code:String)=request("/api/v1/pairings/claim","POST",JSONObject().put("code",code))
