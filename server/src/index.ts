@@ -5,7 +5,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import jwt from "jsonwebtoken";
 import crypto from "node:crypto";
-import twilio from "twilio";
+import nodemailer from "nodemailer";
 import {Pool} from "pg";
 
 const app=express();
@@ -21,7 +21,7 @@ if(secret.length<32) throw new Error("JWT signing configuration is invalid");
 const pool=new Pool({connectionString:process.env.DATABASE_URL,ssl:process.env.DATABASE_SSL==="false"?false:{rejectUnauthorized:false}});
 const jwtDays=Number(process.env.JWT_DAYS??30);
 
-type Claims={sub:string,role:"user"|"admin",phone:string};
+type Claims={sub:string,role:"user"|"admin",email:string};
 const auth=(req:express.Request):Claims|null=>{
  const h=req.header("authorization");
  if(!h?.startsWith("Bearer ")) return null;
@@ -32,61 +32,56 @@ const requireRole=(role:"user"|"admin")=>(req:express.Request,res:express.Respon
  if(c.role!==role)return res.status(403).json({error:"forbidden"});
  (req as any).claims=c; next();
 };
-const normalizePhone=(raw:string)=>{
- const p=String(raw??"").trim().replace(/[\s()-]/g,"");
- return /^\+[1-9]\d{7,14}$/.test(p)?p:null;
-};
+const normalizeEmail=(raw:string)=>{const e=String(raw??"").trim().toLowerCase();return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)?e:null;};
 const hash=(v:string)=>crypto.createHash("sha256").update(v).digest("hex");
 const randomCode=()=>crypto.randomInt(10000000,99999999).toString();
+const randomOtp=()=>crypto.randomInt(100000,1000000).toString();
 
-async function sendOtp(phone:string){
- const sid=process.env.TWILIO_ACCOUNT_SID,token=process.env.TWILIO_AUTH_TOKEN,service=process.env.TWILIO_VERIFY_SERVICE_SID;
- if(!sid||!token||!service)throw new Error("SMS provider is not configured");
- const client=twilio(sid,token);
- await client.verify.v2.services(service).verifications.create({to:phone,channel:"sms"});
+async function sendOtp(email:string,code:string){
+ const host=process.env.SMTP_HOST,user=process.env.SMTP_USER,pass=process.env.SMTP_PASS,from=process.env.SMTP_FROM||user;
+ if(!host||!user||!pass||!from)throw new Error("Email OTP is not configured");
+ const port=Number(process.env.SMTP_PORT??465);
+ const transporter=nodemailer.createTransport({host,port,secure:process.env.SMTP_SECURE!=="false",auth:{user,pass}});
+ await transporter.sendMail({from,to:email,subject:"SPECTER LOCATE verification code",text:`Your SPECTER LOCATE verification code is ${code}. It expires in 10 minutes.`});
 }
-async function ensureUser(phone:string,role:"user"|"admin"){
- const r=await pool.query("INSERT INTO users(phone,role) VALUES($1,$2) ON CONFLICT(phone) DO UPDATE SET updated_at=now() RETURNING id,phone,role",[phone,role]);
+async function ensureUser(email:string,role:"user"|"admin"){
+ const r=await pool.query("INSERT INTO users(email,role) VALUES($1,$2) ON CONFLICT(email) DO UPDATE SET updated_at=now() RETURNING id,email,role",[email,role]);
  return r.rows[0];
 }
-function tokenFor(u:any){return jwt.sign({sub:u.id,role:u.role,phone:u.phone},secret,{expiresIn:`${jwtDays}d`});}
+function tokenFor(u:any){return jwt.sign({sub:u.id,role:u.role,email:u.email},secret,{expiresIn:`${jwtDays}d`});}
 
 app.get("/health",async(_req,res)=>{try{await pool.query("SELECT 1");res.json({ok:true,service:"specter-locate",time:new Date().toISOString()})}catch{res.status(503).json({ok:false})}});
 
 app.post("/api/v1/auth/request-otp",async(req,res)=>{
- const phone=normalizePhone(req.body?.phone); const role=req.body?.role==="admin"?"admin":"user";
- if(!phone)return res.status(400).json({error:"invalid_phone",message:"Use E.164 format, e.g. +8801XXXXXXXXX"});
+ const email=normalizeEmail(req.body?.email); const role=req.body?.role==="admin"?"admin":"user";
+ if(!email)return res.status(400).json({error:"invalid_email",message:"Use a valid email address"});
  if(role==="admin"){
-   const exists=await pool.query("SELECT 1 FROM users WHERE phone=$1 AND role='admin'",[phone]);
+   const exists=await pool.query("SELECT 1 FROM users WHERE email=$1 AND role='admin'",[email]);
    if(!exists.rowCount)return res.status(403).json({error:"admin_not_registered"});
  }
+ const code=randomOtp();
  try{
-   await sendOtp(phone);
-   await pool.query("INSERT INTO otp_requests(phone,role,expires_at) VALUES($1,$2,now()+interval '10 minutes')",[phone,role]);
+   await sendOtp(email,code);
+   await pool.query("INSERT INTO otp_requests(email,role,code_hash,expires_at) VALUES($1,$2,$3,now()+interval '10 minutes')",[email,role,hash(code)]);
    res.json({ok:true,expiresIn:600});
  }catch(e){console.error(e);res.status(503).json({error:"otp_unavailable"})}
 });
 
 app.post("/api/v1/auth/verify-otp",async(req,res)=>{
- const phone=normalizePhone(req.body?.phone),code=String(req.body?.code??"").trim(),role=req.body?.role==="admin"?"admin":"user";
- if(!phone||!/^[0-9]{4,10}$/.test(code))return res.status(400).json({error:"invalid_input"});
- const row=await pool.query("SELECT id FROM otp_requests WHERE phone=$1 AND role=$2 AND consumed=false AND expires_at>now() ORDER BY created_at DESC LIMIT 1",[phone,role]);
+ const email=normalizeEmail(req.body?.email),code=String(req.body?.code??"").trim(),role=req.body?.role==="admin"?"admin":"user";
+ if(!email||!/^[0-9]{6}$/.test(code))return res.status(400).json({error:"invalid_input"});
+ const row=await pool.query("SELECT id,code_hash FROM otp_requests WHERE email=$1 AND role=$2 AND consumed=false AND expires_at>now() ORDER BY created_at DESC LIMIT 1",[email,role]);
  if(!row.rowCount)return res.status(400).json({error:"otp_expired"});
- const sid=process.env.TWILIO_ACCOUNT_SID,token=process.env.TWILIO_AUTH_TOKEN,service=process.env.TWILIO_VERIFY_SERVICE_SID;
- if(!sid||!token||!service)return res.status(503).json({error:"otp_unavailable"});
- try{
-   const check=await twilio(sid,token).verify.v2.services(service).verificationChecks.create({to:phone,code});
-   if(check.status!=="approved")return res.status(401).json({error:"invalid_otp"});
-   await pool.query("UPDATE otp_requests SET consumed=true WHERE id=$1",[row.rows[0].id]);
-   const u=await ensureUser(phone,role);
-   res.json({token:tokenFor(u),user:{id:u.id,phone:u.phone,role:u.role}});
- }catch{res.status(401).json({error:"invalid_otp"})}
+ if(hash(code)!==row.rows[0].code_hash){await pool.query("UPDATE otp_requests SET attempts=attempts+1 WHERE id=$1",[row.rows[0].id]);return res.status(401).json({error:"invalid_otp"})}
+ await pool.query("UPDATE otp_requests SET consumed=true WHERE id=$1",[row.rows[0].id]);
+ const u=await ensureUser(email,role);
+ res.json({token:tokenFor(u),user:{id:u.id,email:u.email,role:u.role}});
 });
 
 app.post("/api/v1/auth/bootstrap-admin",async(req,res)=>{
- const bootstrap=String(req.body?.bootstrapCode??""); const phone=normalizePhone(req.body?.phone);
- if(!phone||!bootstrap||bootstrap!==process.env.ADMIN_BOOTSTRAP_CODE)return res.status(403).json({error:"invalid_bootstrap"});
- await pool.query("INSERT INTO users(phone,role) VALUES($1,'admin') ON CONFLICT(phone) DO UPDATE SET role='admin',updated_at=now()",[phone]);
+ const bootstrap=String(req.body?.bootstrapCode??""); const email=normalizeEmail(req.body?.email);
+ if(!email||!bootstrap||bootstrap!==process.env.ADMIN_BOOTSTRAP_CODE)return res.status(403).json({error:"invalid_bootstrap"});
+ await pool.query("INSERT INTO users(email,role) VALUES($1,'admin') ON CONFLICT(email) DO UPDATE SET role='admin',updated_at=now()",[email]);
  res.json({ok:true});
 });
 
