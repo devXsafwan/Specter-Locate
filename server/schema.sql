@@ -2,7 +2,8 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TABLE IF NOT EXISTS users (
  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
- phone TEXT UNIQUE NOT NULL,
+ phone TEXT UNIQUE,
+ email TEXT UNIQUE,
  role TEXT NOT NULL CHECK(role IN ('user','admin')),
  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -10,14 +11,15 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS otp_requests (
  id BIGSERIAL PRIMARY KEY,
- phone TEXT NOT NULL,
+ email TEXT NOT NULL,
+ code_hash TEXT NOT NULL,
  role TEXT NOT NULL CHECK(role IN ('user','admin')),
  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
  expires_at TIMESTAMPTZ NOT NULL,
  attempts INTEGER NOT NULL DEFAULT 0,
  consumed BOOLEAN NOT NULL DEFAULT false
 );
-CREATE INDEX IF NOT EXISTS otp_phone_created ON otp_requests(phone,created_at DESC);
+CREATE INDEX IF NOT EXISTS otp_email_created ON otp_requests(email,created_at DESC);
 
 CREATE TABLE IF NOT EXISTS devices (
  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -72,3 +74,11 @@ CREATE TABLE IF NOT EXISTS device_events (
  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS device_events_device_time ON device_events(device_id,created_at DESC);
+
+-- Migration for databases created by the previous phone/Twilio schema.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE users ALTER COLUMN phone DROP NOT NULL;
+ALTER TABLE otp_requests ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE otp_requests ADD COLUMN IF NOT EXISTS code_hash TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users(email) WHERE email IS NOT NULL;
+CREATE INDEX IF NOT EXISTS otp_email_created_v2 ON otp_requests(email,created_at DESC);
