@@ -147,8 +147,8 @@ app.post("/api/v1/pairings/claim",requireRole("user"),async(req,res)=>{
 
 app.get("/api/v1/admin/devices",requireRole("admin"),async(req,res)=>{
  const c=(req as any).claims as Claims;
- const r=await pool.query(`SELECT d.*,p.admin_id FROM devices d JOIN pairings p ON p.device_id=d.id AND p.admin_id=$1 AND p.revoked_at IS NULL AND p.claimed_at IS NOT NULL WHERE d.last_seen_at < now()-interval '90 seconds' OR d.last_seen_at IS NOT NULL ORDER BY d.updated_at DESC`,[c.sub]);
  await pool.query("UPDATE devices SET online=false WHERE last_seen_at < now()-interval '90 seconds' AND id IN (SELECT device_id FROM pairings WHERE admin_id=$1 AND revoked_at IS NULL)",[c.sub]);
+ const r=await pool.query(`SELECT d.*,p.admin_id FROM devices d JOIN pairings p ON p.device_id=d.id AND p.admin_id=$1 AND p.revoked_at IS NULL AND p.claimed_at IS NOT NULL ORDER BY d.updated_at DESC`,[c.sub]);
  res.json({devices:r.rows});
 });
 
